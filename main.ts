@@ -10,10 +10,17 @@ function showWeight () {
     rawWeight = HX711.get_units(20)
     rawWeightx10 = rawWeight * 10
     weight = Math.round(rawWeightx10) / 10
-    serial.writeLine("" + weight + "g")
+    serial.writeLine("" + dateTimeString() + weight + "g")
 }
 function pumpControl (pumpState: number) {
     pins.digitalWritePin(DigitalPin.P8, pumpState)
+}
+function leadingZero (num: number) {
+    if (num < 10) {
+        return "0" + num
+    } else {
+        return convertToText(num)
+    }
 }
 // Button A => Pump toggle
 input.onButtonPressed(Button.A, function () {
@@ -24,6 +31,9 @@ input.onButtonPressed(Button.A, function () {
     }
     pumpControl(pumpState)
 })
+function dateTimeString () {
+    return "" + leadingZero(DS3231.date()) + "/" + leadingZero(DS3231.month()) + "/" + DS3231.year() + " " + leadingZero(DS3231.hour()) + ":" + leadingZero(DS3231.minute()) + " "
+}
 // Button B => Tare
 input.onButtonPressed(Button.B, function () {
     doTare()

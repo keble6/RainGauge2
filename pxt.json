@@ -5,7 +5,8 @@
         "core": "*",
         "radio": "*",
         "microphone": "*",
-        "pxt-HX711": "github:daferdur/pxt-myhx711#v1.0.18"
+        "pxt-HX711": "github:daferdur/pxt-myhx711#v1.0.18",
+        "pxt-DS3231": "github:keble6/pxt-ds3231#v1.0.2"
     },
     "files": [
         "main.blocks",
