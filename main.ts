@@ -26,7 +26,11 @@ let rawWeightx10 = 0
 let rawWeight = 0
 let pumpState = 0
 let tareActive = 0
+// HX711 needs a pull-down
+pins.setPull(DigitalPin.P1, PinPullMode.PullDown)
+pins.setPull(DigitalPin.P2, PinPullMode.PullDown)
 tareActive = 0
+// Set pump to off
 pumpState = 0
 pins.digitalWritePin(DigitalPin.P8, pumpState)
 HX711.SetPIN_DOUT(DigitalPin.P1)
@@ -43,5 +47,5 @@ basic.forever(function () {
         showWeight()
         HX711.power_down()
     }
-    basic.pause(2500)
+    basic.pause(2000)
 })
