@@ -1,5 +1,6 @@
 function doTare () {
     serial.writeLine("Doing tare")
+    bluetooth.uartWriteLine("Doing Tare")
     tareActive = 1
     HX711.power_up()
     HX711.tare(10)
@@ -11,6 +12,8 @@ function showWeight () {
     rawWeightx10 = rawWeight * 10
     weight = Math.round(rawWeightx10) / 10
     serial.writeLine("" + dateTimeString() + weight + "g")
+    bluetooth.uartWriteString(dateTimeString())
+    bluetooth.uartWriteLine("" + weight + "g")
 }
 function pumpControl (pumpState: number) {
     pins.digitalWritePin(DigitalPin.P8, pumpState)
@@ -22,6 +25,12 @@ function leadingZero (num: number) {
         return convertToText(num)
     }
 }
+bluetooth.onBluetoothConnected(function () {
+    basic.showIcon(IconNames.Square)
+})
+bluetooth.onBluetoothDisconnected(function () {
+    basic.showIcon(IconNames.SmallSquare)
+})
 // Button A => Pump toggle
 input.onButtonPressed(Button.A, function () {
     if (pumpState == 0) {
@@ -46,6 +55,8 @@ let tareActive = 0
 let weightLimit = 350
 tareActive = 0
 let pumpTime = 10000
+basic.showIcon(IconNames.SmallSquare)
+bluetooth.startUartService()
 pumpControl(0)
 doTare()
 HX711.SetPIN_DOUT(DigitalPin.P1)
@@ -55,6 +66,7 @@ HX711.set_offset(8481274)
 HX711.set_scale(413)
 serial.writeLine("Press A to toggle Pump, B to tare")
 serial.writeLine("")
+bluetooth.uartWriteLine("A=Pump ON/OFF, B=tare")
 basic.forever(function () {
     // Display continuously unless tare is operating
     if (tareActive == 0) {
@@ -63,15 +75,17 @@ basic.forever(function () {
         HX711.power_down()
         if (weight > weightLimit) {
             serial.writeLine("Pump ON")
+            bluetooth.uartWriteString("Pump ON")
             pumpControl(1)
             // Delay of ~1-2s is important
             basic.pause(pumpTime)
             pumpControl(0)
             serial.writeLine("Pump OFF")
+            bluetooth.uartWriteString("Pump OFF")
             basic.pause(10000)
-            serial.writeLine("Tare active")
             doTare()
             serial.writeLine("Resume weighing")
+            bluetooth.uartWriteLine("Resume weighing")
         }
     }
     // Delay of ~1-2s is important
