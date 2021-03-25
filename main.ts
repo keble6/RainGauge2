@@ -12,10 +12,11 @@ function showWeight () {
     rawWeightx10 = rawWeight * 10
     weight = Math.round(rawWeightx10) / 10
     serial.writeLine("" + dateTimeString() + weight + "g")
-    bluetooth.uartWriteString(dateTimeString())
-    bluetooth.uartWriteLine("" + weight + "g")
+    dateTimeReadings.push(dateTimeString())
+    weightReadings.push("" + weight + "g")
 }
 function pumpControl (pumpState: number) {
+    let pumpState = 0
     pins.digitalWritePin(DigitalPin.P8, pumpState)
 }
 function leadingZero (num: number) {
@@ -26,32 +27,62 @@ function leadingZero (num: number) {
     }
 }
 bluetooth.onBluetoothConnected(function () {
+    connected = 1
     basic.showIcon(IconNames.Square)
 })
 bluetooth.onBluetoothDisconnected(function () {
+    connected = 0
     basic.showIcon(IconNames.SmallSquare)
 })
 // Button A => Pump toggle
 input.onButtonPressed(Button.A, function () {
-    if (pumpState == 0) {
-        pumpState = 1
-    } else {
-        pumpState = 0
-    }
-    pumpControl(pumpState)
+    serial.writeLine("Uploading")
+    upload()
 })
 function dateTimeString () {
     return "" + leadingZero(DS3231.date()) + "/" + leadingZero(DS3231.month()) + "/" + DS3231.year() + " " + leadingZero(DS3231.hour()) + ":" + leadingZero(DS3231.minute()) + " "
+}
+function upload () {
+    basic.showLeds(`
+        . . # . .
+        . # # # .
+        # . # . #
+        . . # . .
+        . . # . .
+        `)
+    readingsLength = dateTimeReadings.length
+    if (readingsLength != 0) {
+        for (let index = 0; index <= readingsLength - 1; index++) {
+            if (connected == 1) {
+                bluetooth.uartWriteString(dateTimeReadings[index])
+                basic.pause(10)
+                bluetooth.uartWriteLine(weightReadings[index])
+                basic.pause(10)
+            }
+        }
+        basic.showIcon(IconNames.Yes)
+    } else {
+        bluetooth.uartWriteLine("No stored readings!")
+    }
 }
 // Button B => Tare
 input.onButtonPressed(Button.B, function () {
     doTare()
 })
-let pumpState = 0
+let readingsLength = 0
+let connected = 0
 let weight = 0
 let rawWeightx10 = 0
 let rawWeight = 0
 let tareActive = 0
+let weightReadings: string[] = []
+let dateTimeReadings: string[] = []
+let readingsMax = 600
+// storage
+dateTimeReadings = []
+weightReadings = []
+// time between readings (ms)
+let readingPeriod = 60000
 let weightLimit = 350
 tareActive = 0
 let pumpTime = 10000
@@ -89,5 +120,5 @@ basic.forever(function () {
         }
     }
     // Delay of ~1-2s is important
-    basic.pause(2000)
+    basic.pause(readingPeriod)
 })
