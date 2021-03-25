@@ -1,6 +1,6 @@
 function doTare () {
     serial.writeLine("Doing tare")
-    bluetooth.uartWriteLine("Doing Tare")
+    logEvent("Doing tare")
     tareActive = 1
     HX711.power_up()
     HX711.tare(10)
@@ -16,7 +16,6 @@ function showWeight () {
     weightReadings.push("" + weight + "g")
 }
 function pumpControl (pumpState: number) {
-    let pumpState = 0
     pins.digitalWritePin(DigitalPin.P8, pumpState)
 }
 function leadingZero (num: number) {
@@ -39,6 +38,11 @@ input.onButtonPressed(Button.A, function () {
     serial.writeLine("Uploading")
     upload()
 })
+// Store an event (text)
+function logEvent (text: string) {
+    dateTimeReadings.push(dateTimeString())
+    weightReadings.push(text)
+}
 function dateTimeString () {
     return "" + leadingZero(DS3231.date()) + "/" + leadingZero(DS3231.month()) + "/" + DS3231.year() + " " + leadingZero(DS3231.hour()) + ":" + leadingZero(DS3231.minute()) + " "
 }
@@ -65,6 +69,17 @@ function upload () {
         bluetooth.uartWriteLine("No stored readings!")
     }
 }
+input.onButtonPressed(Button.AB, function () {
+    DS3231.dateTime(
+    2021,
+    3,
+    25,
+    4,
+    19,
+    8,
+    0
+    )
+})
 // Button B => Tare
 input.onButtonPressed(Button.B, function () {
     doTare()
@@ -77,6 +92,7 @@ let rawWeight = 0
 let tareActive = 0
 let weightReadings: string[] = []
 let dateTimeReadings: string[] = []
+let pumpState = 0
 let readingsMax = 600
 // storage
 dateTimeReadings = []
@@ -95,9 +111,9 @@ HX711.SetPIN_SCK(DigitalPin.P2)
 HX711.begin()
 HX711.set_offset(8481274)
 HX711.set_scale(413)
-serial.writeLine("Press A to toggle Pump, B to tare")
+serial.writeLine("A=Upload, B=reset store")
 serial.writeLine("")
-bluetooth.uartWriteLine("A=Pump ON/OFF, B=tare")
+logEvent("A=Upload, B=reset store")
 basic.forever(function () {
     // Display continuously unless tare is operating
     if (tareActive == 0) {
@@ -106,17 +122,17 @@ basic.forever(function () {
         HX711.power_down()
         if (weight > weightLimit) {
             serial.writeLine("Pump ON")
-            bluetooth.uartWriteString("Pump ON")
+            logEvent("Pump ON")
             pumpControl(1)
             // Delay of ~1-2s is important
             basic.pause(pumpTime)
             pumpControl(0)
             serial.writeLine("Pump OFF")
-            bluetooth.uartWriteString("Pump OFF")
+            logEvent("Pump OFF")
             basic.pause(10000)
             doTare()
             serial.writeLine("Resume weighing")
-            bluetooth.uartWriteLine("Resume weighing")
+            logEvent("Resume weighing")
         }
     }
     // Delay of ~1-2s is important
