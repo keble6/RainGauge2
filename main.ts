@@ -116,7 +116,7 @@ HX711.set_offset(8481274)
 HX711.set_scale(413)
 serial.writeLine("B=reset store A+B=set time")
 serial.writeLine("")
-logEvent("B=reset store A+B=set time")
+logEvent("start up")
 doTare()
 basic.forever(function () {
     // Display continuously unless tare is operating
