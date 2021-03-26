@@ -18,6 +18,13 @@ function showWeight () {
 function pumpControl (pumpState: number) {
     pins.digitalWritePin(DigitalPin.P8, pumpState)
 }
+function deleteReadings () {
+    readingsLength = dateTimeReadings.length
+    for (let index = 0; index < readingsLength; index++) {
+        dateTimeReadings.pop()
+        weightReadings.pop()
+    }
+}
 function leadingZero (num: number) {
     if (num < 10) {
         return "0" + num
@@ -25,18 +32,15 @@ function leadingZero (num: number) {
         return convertToText(num)
     }
 }
+// Upload readings to BT
 bluetooth.onBluetoothConnected(function () {
     connected = 1
     basic.showIcon(IconNames.Square)
+    upload()
 })
 bluetooth.onBluetoothDisconnected(function () {
     connected = 0
     basic.showIcon(IconNames.SmallSquare)
-})
-// Button A => Pump toggle
-input.onButtonPressed(Button.A, function () {
-    serial.writeLine("Uploading")
-    upload()
 })
 // Store an event (text)
 function logEvent (text: string) {
@@ -80,12 +84,12 @@ input.onButtonPressed(Button.AB, function () {
     0
     )
 })
-// Button B => Tare
+// Button B => Delete readings
 input.onButtonPressed(Button.B, function () {
-    doTare()
+    deleteReadings()
 })
-let readingsLength = 0
 let connected = 0
+let readingsLength = 0
 let weight = 0
 let rawWeightx10 = 0
 let rawWeight = 0
@@ -105,15 +109,15 @@ let pumpTime = 10000
 basic.showIcon(IconNames.SmallSquare)
 bluetooth.startUartService()
 pumpControl(0)
-doTare()
 HX711.SetPIN_DOUT(DigitalPin.P1)
 HX711.SetPIN_SCK(DigitalPin.P2)
 HX711.begin()
 HX711.set_offset(8481274)
 HX711.set_scale(413)
-serial.writeLine("A=Upload, B=reset store")
+serial.writeLine("B=reset store A+B=set time")
 serial.writeLine("")
-logEvent("A=Upload, B=reset store")
+logEvent("B=reset store A+B=set time")
+doTare()
 basic.forever(function () {
     // Display continuously unless tare is operating
     if (tareActive == 0) {
