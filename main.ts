@@ -103,9 +103,11 @@ dateTimeReadings = []
 weightReadings = []
 // time between readings (ms)
 let readingPeriod = 60000
-let weightLimit = 350
+let weightLimit = 300
 tareActive = 0
-let pumpTime = 10000
+// 5 minutes pump on
+// 
+let pumpTime = 300000
 basic.showIcon(IconNames.SmallSquare)
 bluetooth.startUartService()
 pumpControl(0)
