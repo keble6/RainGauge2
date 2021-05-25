@@ -15,9 +15,6 @@ function showWeight () {
     dateTimeReadings.push(dateTimeString())
     weightReadings.push("" + weight + "g")
 }
-function pumpControl (pumpState: number) {
-    pins.digitalWritePin(DigitalPin.P8, pumpState)
-}
 function deleteReadings () {
     readingsLength = dateTimeReadings.length
     for (let index = 0; index < readingsLength; index++) {
@@ -42,6 +39,13 @@ bluetooth.onBluetoothDisconnected(function () {
     connected = 0
     basic.showIcon(IconNames.SmallSquare)
 })
+input.onButtonPressed(Button.A, function () {
+    serial.writeLine("Valve ON for 1 minute")
+    valveControl(1)
+    basic.pause(60000)
+    valveControl(0)
+    doTare()
+})
 // Store an event (text)
 function logEvent (text: string) {
     dateTimeReadings.push(dateTimeString())
@@ -60,11 +64,11 @@ function upload () {
         `)
     readingsLength = dateTimeReadings.length
     if (readingsLength != 0) {
-        for (let index = 0; index <= readingsLength - 1; index++) {
+        for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
             if (connected == 1) {
-                bluetooth.uartWriteString(dateTimeReadings[index])
+                bluetooth.uartWriteString(dateTimeReadings[index2])
                 basic.pause(10)
-                bluetooth.uartWriteLine(weightReadings[index])
+                bluetooth.uartWriteLine(weightReadings[index2])
                 basic.pause(10)
             }
         }
@@ -88,6 +92,9 @@ input.onButtonPressed(Button.AB, function () {
 input.onButtonPressed(Button.B, function () {
     deleteReadings()
 })
+function valveControl (valveState: number) {
+    pins.digitalWritePin(DigitalPin.P8, valveState)
+}
 let connected = 0
 let readingsLength = 0
 let weight = 0
@@ -96,7 +103,7 @@ let rawWeight = 0
 let tareActive = 0
 let weightReadings: string[] = []
 let dateTimeReadings: string[] = []
-let pumpState = 0
+let valveState = 0
 let readingsMax = 600
 // storage
 dateTimeReadings = []
@@ -105,12 +112,11 @@ weightReadings = []
 let readingPeriod = 60000
 let weightLimit = 300
 tareActive = 0
-// 5 minutes pump on
-// 
-let pumpTime = 300000
+// 5 minutes valve on
+let valveTime = 300000
 basic.showIcon(IconNames.SmallSquare)
 bluetooth.startUartService()
-pumpControl(0)
+valveControl(0)
 HX711.SetPIN_DOUT(DigitalPin.P1)
 HX711.SetPIN_SCK(DigitalPin.P2)
 HX711.begin()
@@ -127,14 +133,14 @@ basic.forever(function () {
         showWeight()
         HX711.power_down()
         if (weight > weightLimit) {
-            serial.writeLine("Pump ON")
-            logEvent("Pump ON")
-            pumpControl(1)
+            serial.writeLine("Valve ON")
+            logEvent("Valve ON")
+            valveControl(1)
             // Delay of ~1-2s is important
-            basic.pause(pumpTime)
-            pumpControl(0)
-            serial.writeLine("Pump OFF")
-            logEvent("Pump OFF")
+            basic.pause(valveTime)
+            valveControl(0)
+            serial.writeLine("Valve OFF")
+            logEvent("Valve OFF")
             basic.pause(10000)
             doTare()
             serial.writeLine("Resume weighing")
