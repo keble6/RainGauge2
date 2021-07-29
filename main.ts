@@ -1,6 +1,6 @@
 function doTare () {
-    serial.writeLine("Doing tare")
-    logEvent("Doing tare")
+    serial.writeLine("#Doing tare")
+    logEvent("#Doing tare")
     tareActive = 1
     HX711.power_up()
     HX711.tare(10)
@@ -14,6 +14,24 @@ function showWeight () {
     serial.writeLine("" + dateTimeString() + weight + "g")
     dateTimeReadings.push(dateTimeString())
     weightReadings.push("" + weight + "g")
+}
+function parseCommand () {
+    command = stringIn.substr(0, 2)
+    params = stringIn.substr(2, stringIn.length - 2)
+    if (command.compare("rt") == 0) {
+        serial.writeLine("" + command + ": " + params)
+        serial.writeLine("" + (dateTimeString()))
+    } else if (command.compare("st") == 0) {
+        setTime()
+    } else if (command.compare("xx") == 0) {
+        serial.writeLine("Deleting stored data!")
+        deleteReadings()
+    } else if (command.compare("mt") == 0) {
+        serial.writeLine("Emptying tank!")
+        emptyTank()
+    } else {
+        serial.writeLine("Invalid command")
+    }
 }
 function pumpControl (pumpState: number) {
     pins.digitalWritePin(DigitalPin.P8, pumpState)
@@ -43,12 +61,35 @@ bluetooth.onBluetoothDisconnected(function () {
     basic.showIcon(IconNames.SmallSquare)
 })
 input.onButtonPressed(Button.A, function () {
-    serial.writeLine("Pump ON for 1 minute")
+    serial.writeLine("#Pump ON for 1 " + pumpOnTime / 1000 + "s")
     pumpControl(1)
-    basic.pause(60000)
+    basic.pause(pumpOnTime)
     pumpControl(0)
     doTare()
 })
+// Read and report weight every ~1 minute
+function readWeight () {
+    // Display continuously unless tare is operating
+    if (tareActive == 0) {
+        HX711.power_up()
+        showWeight()
+        HX711.power_down()
+        if (weight > weightLimit) {
+            serial.writeLine("#Pump ON")
+            logEvent("#Pump ON")
+            pumpControl(1)
+            // Delay of ~1-2s is important
+            basic.pause(pumpOnTime)
+            pumpControl(0)
+            serial.writeLine("#Pump OFF")
+            logEvent("#Pump OFF")
+            basic.pause(10000)
+            doTare()
+            serial.writeLine("#Resume weighing")
+            logEvent("#Resume weighing")
+        }
+    }
+}
 // Store an event (text)
 function logEvent (text: string) {
     dateTimeReadings.push(dateTimeString())
@@ -80,40 +121,59 @@ function upload () {
         bluetooth.uartWriteLine("No stored readings!")
     }
 }
-input.onButtonPressed(Button.AB, function () {
+function setTime () {
+    serial.writeLine("" + command + ": " + params)
+    yr = params.substr(0, 4)
+    mo = params.substr(4, 2)
+    dt = params.substr(6, 2)
+    hh = params.substr(8, 2)
+    mm = params.substr(10, 2)
     DS3231.dateTime(
-    2021,
-    3,
-    25,
+    parseFloat(yr),
+    parseFloat(mo),
+    parseFloat(dt),
     4,
-    19,
-    8,
+    parseFloat(hh),
+    parseFloat(mm),
     0
     )
-})
-// Button B => Delete readings
-input.onButtonPressed(Button.B, function () {
-    deleteReadings()
-})
+    serial.writeLine("#Date & time have been set")
+}
+function emptyTank () {
+    pumpControl(1)
+    basic.pause(pumpOnTime)
+    pumpControl(0)
+    doTare()
+}
+let charIn = ""
+let mm = ""
+let hh = ""
+let dt = ""
+let mo = ""
+let yr = ""
 let connected = 0
 let readingsLength = 0
+let params = ""
+let command = ""
 let weight = 0
 let rawWeightx10 = 0
 let rawWeight = 0
+let stringIn = ""
 let tareActive = 0
+let weightLimit = 0
 let weightReadings: string[] = []
 let dateTimeReadings: string[] = []
+let pumpOnTime = 0
 let pumpState = 0
+pumpOnTime = 20000
 let readingsMax = 600
 // storage
 dateTimeReadings = []
 weightReadings = []
 // time between readings (ms)
 let readingPeriod = 60000
-let weightLimit = 300
+weightLimit = 300
 tareActive = 0
-// 5 minutes pump on
-let pumpTime = 300000
 basic.showIcon(IconNames.SmallSquare)
 bluetooth.startUartService()
 pumpControl(0)
@@ -121,34 +181,27 @@ HX711.SetPIN_DOUT(DigitalPin.P1)
 HX711.SetPIN_SCK(DigitalPin.P2)
 HX711.begin()
 HX711.set_offset(8481274)
-HX711.set_scale(413)
-serial.writeLine("*** A=pump ON for 1 minute ***")
-serial.writeLine("*** B=reset store ***")
-serial.writeLine("*** A+B=set time ***")
+HX711.set_scale(415)
+serial.writeLine("#*** Button A=pump ON for 20s ***")
 serial.writeLine("")
-logEvent("start up")
-doTare()
+serial.writeLine("#Pump ON for " + pumpOnTime / 1000 + "s")
+logEvent("#start up")
+emptyTank()
+serial.writeLine("#starting...")
+stringIn = ""
 basic.forever(function () {
-    // Display continuously unless tare is operating
-    if (tareActive == 0) {
-        HX711.power_up()
-        showWeight()
-        HX711.power_down()
-        if (weight > weightLimit) {
-            serial.writeLine("Pump ON")
-            logEvent("Pump ON")
-            pumpControl(1)
-            // Delay of ~1-2s is important
-            basic.pause(pumpTime)
-            pumpControl(0)
-            serial.writeLine("Pump OFF")
-            logEvent("Pump OFF")
-            basic.pause(10000)
-            doTare()
-            serial.writeLine("Resume weighing")
-            logEvent("Resume weighing")
-        }
+    charIn = serial.readString()
+    stringIn = "" + stringIn + charIn
+    if (charIn.compare(String.fromCharCode(13)) == 0) {
+        serial.writeString("" + String.fromCharCode(13) + String.fromCharCode(10))
+        parseCommand()
+        stringIn = ""
+    } else {
+        serial.writeString(charIn)
     }
-    // Delay of ~1-2s is important
-    basic.pause(readingPeriod)
+    // Read and report weight every ~ 1 minute
+    if (DS3231.second() == 0) {
+        readWeight()
+        basic.pause(1000)
+    }
 })
