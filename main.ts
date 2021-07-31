@@ -1,12 +1,14 @@
 function doTare () {
     serial.writeLine("#Doing tare")
     logEvent("#Doing tare")
+    basic.pause(pumpSettleTime)
     tareActive = 1
     HX711.power_up()
-    HX711.tare(10)
+    HX711.tare(numTare)
     HX711.power_down()
     tareActive = 0
 }
+// TODO - add test readingsMax to see if over limit
 function showWeight () {
     rawWeight = HX711.get_units(20)
     rawWeightx10 = rawWeight * 10
@@ -58,16 +60,12 @@ bluetooth.onBluetoothConnected(function () {
 })
 bluetooth.onBluetoothDisconnected(function () {
     connected = 0
-    basic.showIcon(IconNames.SmallSquare)
+    basic.clearScreen()
 })
 input.onButtonPressed(Button.A, function () {
-    serial.writeLine("#Pump ON for 1 " + pumpOnTime / 1000 + "s")
-    pumpControl(1)
-    basic.pause(pumpOnTime)
-    pumpControl(0)
-    doTare()
+    emptyTank()
 })
-// Read and report weight every ~1 minute
+// Read and report weight every ~1 minute TODO add persistence check!!!!
 function readWeight () {
     // Display continuously unless tare is operating
     if (tareActive == 0) {
@@ -75,23 +73,21 @@ function readWeight () {
         showWeight()
         HX711.power_down()
         if (weight > weightLimit) {
-            serial.writeLine("#Pump ON")
             logEvent("#Pump ON")
             pumpControl(1)
             // Delay of ~1-2s is important
             basic.pause(pumpOnTime)
             pumpControl(0)
-            serial.writeLine("#Pump OFF")
             logEvent("#Pump OFF")
             basic.pause(10000)
             doTare()
-            serial.writeLine("#Resume weighing")
             logEvent("#Resume weighing")
         }
     }
 }
-// Store an event (text)
+// Store an event (text) and also send it to serial (USB)
 function logEvent (text: string) {
+    serial.writeLine(text)
     dateTimeReadings.push(dateTimeString())
     weightReadings.push(text)
 }
@@ -99,13 +95,6 @@ function dateTimeString () {
     return "" + leadingZero(DS3231.date()) + "/" + leadingZero(DS3231.month()) + "/" + DS3231.year() + " " + leadingZero(DS3231.hour()) + ":" + leadingZero(DS3231.minute()) + " "
 }
 function upload () {
-    basic.showLeds(`
-        . . # . .
-        . # # # .
-        # . # . #
-        . . # . .
-        . . # . .
-        `)
     readingsLength = dateTimeReadings.length
     if (readingsLength != 0) {
         for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
@@ -121,6 +110,7 @@ function upload () {
         bluetooth.uartWriteLine("No stored readings!")
     }
 }
+// set the time - from serial USB ONLY
 function setTime () {
     serial.writeLine("" + command + ": " + params)
     yr = params.substr(0, 4)
@@ -140,6 +130,7 @@ function setTime () {
     serial.writeLine("#Date & time have been set")
 }
 function emptyTank () {
+    logEvent("#Empty tank")
     pumpControl(1)
     basic.pause(pumpOnTime)
     pumpControl(0)
@@ -160,21 +151,23 @@ let rawWeightx10 = 0
 let rawWeight = 0
 let stringIn = ""
 let tareActive = 0
+let numTare = 0
 let weightLimit = 0
 let weightReadings: string[] = []
 let dateTimeReadings: string[] = []
+let pumpSettleTime = 0
 let pumpOnTime = 0
 let pumpState = 0
 pumpOnTime = 20000
-let readingsMax = 600
+pumpSettleTime = 30000
+let readingsMax = 3000
 // storage
 dateTimeReadings = []
 weightReadings = []
-// time between readings (ms)
-let readingPeriod = 60000
 weightLimit = 300
+numTare = 50
 tareActive = 0
-basic.showIcon(IconNames.SmallSquare)
+basic.clearScreen()
 bluetooth.startUartService()
 pumpControl(0)
 HX711.SetPIN_DOUT(DigitalPin.P1)
@@ -183,11 +176,9 @@ HX711.begin()
 HX711.set_offset(8481274)
 HX711.set_scale(415)
 serial.writeLine("#*** Button A=pump ON for 20s ***")
-serial.writeLine("")
-serial.writeLine("#Pump ON for " + pumpOnTime / 1000 + "s")
-logEvent("#start up")
+logEvent("#Start up")
+logEvent("#Pump on")
 emptyTank()
-serial.writeLine("#starting...")
 stringIn = ""
 basic.forever(function () {
     charIn = serial.readString()
@@ -202,6 +193,10 @@ basic.forever(function () {
     // Read and report weight every ~ 1 minute
     if (DS3231.second() == 0) {
         readWeight()
-        basic.pause(1000)
+        // Brief heartbeat
+        basic.showIcon(IconNames.Heart)
+        basic.pause(100)
+        basic.clearScreen()
+        basic.pause(900)
     }
 })
