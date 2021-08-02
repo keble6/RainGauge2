@@ -1,5 +1,4 @@
 function doTare () {
-    serial.writeLine("#Doing tare")
     logEvent("#Doing tare")
     basic.pause(pumpSettleTime)
     tareActive = 1
@@ -10,12 +9,14 @@ function doTare () {
 }
 // TODO - add test readingsMax to see if over limit
 function showWeight () {
+    HX711.power_up()
     rawWeight = HX711.get_units(20)
     rawWeightx10 = rawWeight * 10
     weight = Math.round(rawWeightx10) / 10
     serial.writeLine("" + dateTimeString() + weight + "g")
     dateTimeReadings.push(dateTimeString())
     weightReadings.push("" + weight + "g")
+    HX711.power_down()
 }
 function parseCommand () {
     command = stringIn.substr(0, 2)
@@ -31,6 +32,9 @@ function parseCommand () {
     } else if (command.compare("mt") == 0) {
         serial.writeLine("Emptying tank!")
         emptyTank()
+    } else if (command.compare("ta") == 0) {
+        serial.writeLine("Doing tare!")
+        doTare()
     } else {
         serial.writeLine("Invalid command")
     }
@@ -69,19 +73,15 @@ input.onButtonPressed(Button.A, function () {
 function readWeight () {
     // Display continuously unless tare is operating
     if (tareActive == 0) {
-        HX711.power_up()
         showWeight()
-        HX711.power_down()
+        // Check if presistence
         if (weight > weightLimit) {
-            logEvent("#Pump ON")
-            pumpControl(1)
-            // Delay of ~1-2s is important
-            basic.pause(pumpOnTime)
-            pumpControl(0)
-            logEvent("#Pump OFF")
-            basic.pause(10000)
-            doTare()
-            logEvent("#Resume weighing")
+            // Ignore "large" transient change
+            lastWeight = weight
+            showWeight()
+            if (lastWeight > weight * 0.9) {
+                emptyTank()
+            }
         }
     }
 }
@@ -134,6 +134,7 @@ function emptyTank () {
     pumpControl(1)
     basic.pause(pumpOnTime)
     pumpControl(0)
+    basic.pause(10000)
     doTare()
 }
 let charIn = ""
@@ -142,6 +143,7 @@ let hh = ""
 let dt = ""
 let mo = ""
 let yr = ""
+let lastWeight = 0
 let connected = 0
 let readingsLength = 0
 let params = ""
@@ -160,6 +162,7 @@ let pumpOnTime = 0
 let pumpState = 0
 pumpOnTime = 20000
 pumpSettleTime = 30000
+let readingPeriod = 60000
 let readingsMax = 3000
 // storage
 dateTimeReadings = []
@@ -177,9 +180,9 @@ HX711.set_offset(8481274)
 HX711.set_scale(415)
 serial.writeLine("#*** Button A=pump ON for 20s ***")
 logEvent("#Start up")
-logEvent("#Pump on")
 emptyTank()
 stringIn = ""
+// Process serial input 
 basic.forever(function () {
     charIn = serial.readString()
     stringIn = "" + stringIn + charIn
@@ -190,13 +193,12 @@ basic.forever(function () {
     } else {
         serial.writeString(charIn)
     }
-    // Read and report weight every ~ 1 minute
-    if (DS3231.second() == 0) {
-        readWeight()
-        // Brief heartbeat
-        basic.showIcon(IconNames.Heart)
-        basic.pause(100)
-        basic.clearScreen()
-        basic.pause(900)
-    }
+})
+// Read the weight
+loops.everyInterval(readingPeriod, function () {
+    readWeight()
+    // Brief heartbeat
+    basic.showIcon(IconNames.Heart)
+    basic.pause(100)
+    basic.clearScreen()
 })
