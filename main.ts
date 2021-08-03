@@ -6,17 +6,7 @@ function doTare () {
     HX711.tare(numTare)
     HX711.power_down()
     tareActive = 0
-}
-// TODO - add test readingsMax to see if over limit
-function showWeight () {
-    HX711.power_up()
-    rawWeight = HX711.get_units(20)
-    rawWeightx10 = rawWeight * 10
-    weight = Math.round(rawWeightx10) / 10
-    serial.writeLine("" + dateTimeString() + weight + "g")
-    dateTimeReadings.push(dateTimeString())
-    weightReadings.push("" + weight + "g")
-    HX711.power_down()
+    storeWeight()
 }
 function parseCommand () {
     command = stringIn.substr(0, 2)
@@ -69,21 +59,30 @@ bluetooth.onBluetoothDisconnected(function () {
 input.onButtonPressed(Button.A, function () {
     emptyTank()
 })
-// Read and report weight every ~1 minute TODO add persistence check!!!!
+// Read and report weight every xx minutes
 function readWeight () {
-    // Display continuously unless tare is operating
+    // Display continuously read weight, unless tare is operating
     if (tareActive == 0) {
-        showWeight()
-        // Check if presistence
+        lastWeight = weight
+        HX711.power_up()
+        rawWeight = HX711.get_units(20)
+        rawWeightx10 = rawWeight * 10
+        weight = Math.round(rawWeightx10) / 10
+        serial.writeLine("" + dateTimeString() + weight + "g")
+        HX711.power_down()
+        // Only store significant weight change
+        if (Math.abs(weight - lastWeight) > deltaWeight) {
+            storeWeight()
+        }
+        // May not need persistence check if we have a filtered PSU
         if (weight > weightLimit) {
-            // Ignore "large" transient change
-            lastWeight = weight
-            showWeight()
-            if (lastWeight > weight * 0.9) {
-                emptyTank()
-            }
+            emptyTank()
         }
     }
+}
+function storeWeight () {
+    dateTimeReadings.push(dateTimeString())
+    weightReadings.push("" + weight + "g")
 }
 // Store an event (text) and also send it to serial (USB)
 function logEvent (text: string) {
@@ -143,19 +142,20 @@ let hh = ""
 let dt = ""
 let mo = ""
 let yr = ""
+let rawWeightx10 = 0
+let rawWeight = 0
+let weight = 0
 let lastWeight = 0
 let connected = 0
 let readingsLength = 0
 let params = ""
 let command = ""
-let weight = 0
-let rawWeightx10 = 0
-let rawWeight = 0
 let stringIn = ""
 let tareActive = 0
 let numTare = 0
 let weightLimit = 0
 let weightReadings: string[] = []
+let deltaWeight = 0
 let dateTimeReadings: string[] = []
 let pumpSettleTime = 0
 let pumpOnTime = 0
@@ -166,9 +166,10 @@ let readingPeriod = 60000
 let readingsMax = 3000
 // storage
 dateTimeReadings = []
+deltaWeight = 1
 weightReadings = []
 weightLimit = 300
-numTare = 50
+numTare = 10
 tareActive = 0
 basic.clearScreen()
 bluetooth.startUartService()
