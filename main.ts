@@ -70,14 +70,6 @@ function readWeight () {
         weight = Math.round(rawWeightx10) / 10
         serial.writeLine("" + dateTimeString() + weight + "g")
         HX711.power_down()
-        // Only store significant weight change
-        if (Math.abs(weight - lastWeight) > deltaWeight) {
-            storeWeight()
-        }
-        // May not need persistence check if we have a filtered PSU
-        if (weight > weightLimit) {
-            emptyTank()
-        }
     }
 }
 function storeWeight () {
@@ -153,9 +145,7 @@ let command = ""
 let stringIn = ""
 let tareActive = 0
 let numTare = 0
-let weightLimit = 0
 let weightReadings: string[] = []
-let deltaWeight = 0
 let dateTimeReadings: string[] = []
 let pumpSettleTime = 0
 let pumpOnTime = 0
@@ -166,9 +156,9 @@ let readingPeriod = 60000
 let readingsMax = 3000
 // storage
 dateTimeReadings = []
-deltaWeight = 1
+let deltaWeight = 1
 weightReadings = []
-weightLimit = 300
+let weightLimit = 300
 numTare = 10
 tareActive = 0
 basic.clearScreen()
@@ -202,4 +192,16 @@ loops.everyInterval(readingPeriod, function () {
     basic.showIcon(IconNames.Heart)
     basic.pause(100)
     basic.clearScreen()
+    // Only store significant weight change
+    if (Math.abs(weight - lastWeight) > deltaWeight) {
+        storeWeight()
+    }
+    if (weight > weightLimit) {
+        // Read again to allow for glitches
+        readWeight()
+        // Empty only if 2 successive reads are over the weight limit
+        if (weight > weightLimit) {
+            emptyTank()
+        }
+    }
 })
