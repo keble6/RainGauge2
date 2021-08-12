@@ -88,14 +88,15 @@ function dateTimeString () {
     return "" + leadingZero(DS3231.date()) + "/" + leadingZero(DS3231.month()) + "/" + DS3231.year() + " " + leadingZero(DS3231.hour()) + ":" + leadingZero(DS3231.minute()) + " "
 }
 function upload () {
+    basic.pause(100)
     readingsLength = dateTimeReadings.length
     if (readingsLength != 0) {
         for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
             if (connected == 1) {
                 bluetooth.uartWriteString(dateTimeReadings[index2])
-                basic.pause(50)
+                basic.pause(100)
                 bluetooth.uartWriteLine(weightReadings[index2])
-                basic.pause(50)
+                basic.pause(100)
             }
         }
         basic.showIcon(IconNames.Yes)
