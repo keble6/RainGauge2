@@ -25,6 +25,8 @@ function parseCommand () {
     } else if (command.compare("ta") == 0) {
         serial.writeLine("Doing tare!")
         doTare()
+    } else if (command.compare("up") == 0) {
+        uploadUSB()
     } else {
         serial.writeLine("Invalid command")
     }
@@ -91,9 +93,9 @@ function upload () {
         for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
             if (connected == 1) {
                 bluetooth.uartWriteString(dateTimeReadings[index2])
-                basic.pause(10)
+                basic.pause(50)
                 bluetooth.uartWriteLine(weightReadings[index2])
-                basic.pause(10)
+                basic.pause(50)
             }
         }
         basic.showIcon(IconNames.Yes)
@@ -119,6 +121,21 @@ function setTime () {
     0
     )
     serial.writeLine("#Date & time have been set")
+}
+function uploadUSB () {
+    readingsLength = dateTimeReadings.length
+    if (readingsLength != 0) {
+        for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
+            if (connected == 1) {
+                serial.writeString(dateTimeReadings[index2])
+                basic.pause(50)
+                serial.writeLine("" + (weightReadings[index2]))
+                basic.pause(50)
+            }
+        }
+    } else {
+        serial.writeLine("No stored readings!")
+    }
 }
 function emptyTank () {
     logEvent("#Empty tank")
