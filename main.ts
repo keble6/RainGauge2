@@ -133,6 +133,7 @@ function uploadUSB () {
                 basic.pause(50)
             }
         }
+        serial.writeLine("Upload completed")
     } else {
         serial.writeLine("No stored readings!")
     }
