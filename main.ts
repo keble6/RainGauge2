@@ -6,6 +6,7 @@ function doTare () {
     HX711.tare(numTare)
     HX711.power_down()
     tareActive = 0
+    readWeight()
     storeWeight()
 }
 function parseCommand () {
@@ -126,11 +127,11 @@ function setTime () {
 function uploadUSB () {
     readingsLength = dateTimeReadings.length
     if (readingsLength != 0) {
-        for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
+        for (let index3 = 0; index3 <= readingsLength - 1; index3++) {
             if (connected == 1) {
-                serial.writeString(dateTimeReadings[index2])
+                serial.writeString(dateTimeReadings[index3])
                 basic.pause(50)
-                serial.writeLine("" + (weightReadings[index2]))
+                serial.writeLine("" + (weightReadings[index3]))
                 basic.pause(50)
             }
         }
