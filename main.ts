@@ -4,7 +4,6 @@ function doTare () {
     tareActive = 1
     HX711.power_up()
     HX711.tare(numTare)
-    HX711.power_down()
     tareActive = 0
     readWeight()
     storeWeight()
