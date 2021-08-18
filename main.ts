@@ -212,8 +212,10 @@ loops.everyInterval(readingPeriod, function () {
     basic.showIcon(IconNames.Heart)
     basic.pause(100)
     basic.clearScreen()
-    // Only store significant weight change
+    // Only store significant weight change, or when minutes=0 (hourly store)
     if (Math.abs(weight - lastWeight) > deltaWeight) {
+        storeWeight()
+    } else if (DS3231.minute() == 0) {
         storeWeight()
     }
     if (weight > weightLimit) {
