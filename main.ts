@@ -3,6 +3,7 @@ function doTare () {
     basic.pause(pumpSettleTime)
     tareActive = 1
     HX711.power_up()
+    basic.pause(powerupDelay)
     HX711.tare(numTare)
     tareActive = 0
     readWeight()
@@ -67,6 +68,7 @@ function readWeight () {
     if (tareActive == 0) {
         lastWeight = weight
         HX711.power_up()
+        basic.pause(powerupDelay)
         rawWeight = HX711.get_units(20)
         rawWeightx10 = rawWeight * 10
         weight = Math.round(rawWeightx10) / 10
@@ -162,6 +164,7 @@ let readingsLength = 0
 let params = ""
 let command = ""
 let stringIn = ""
+let powerupDelay = 0
 let tareActive = 0
 let numTare = 0
 let weightReadings: string[] = []
@@ -180,6 +183,7 @@ weightReadings = []
 let weightLimit = 300
 numTare = 10
 tareActive = 0
+powerupDelay = 500
 basic.clearScreen()
 bluetooth.startUartService()
 pumpControl(0)
@@ -211,10 +215,12 @@ loops.everyInterval(readingPeriod, function () {
     basic.showIcon(IconNames.Heart)
     basic.pause(100)
     basic.clearScreen()
-    // Only store significant weight change, or when minutes=0 (hourly store)
-    if (Math.abs(weight - lastWeight) > deltaWeight) {
+    // Store weight on the hour
+    if (DS3231.minute() == 0) {
         storeWeight()
-    } else if (DS3231.minute() == 0) {
+    }
+    // Only store significant weight change
+    if (Math.abs(weight - lastWeight) > deltaWeight) {
         storeWeight()
     }
     if (weight > weightLimit) {
