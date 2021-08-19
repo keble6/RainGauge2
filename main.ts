@@ -66,7 +66,6 @@ input.onButtonPressed(Button.A, function () {
 function readWeight () {
     // Display continuously read weight, unless tare is operating
     if (tareActive == 0) {
-        lastWeight = weight
         HX711.power_up()
         basic.pause(powerupDelay)
         rawWeight = HX711.get_units(20)
@@ -129,12 +128,10 @@ function uploadUSB () {
     readingsLength = dateTimeReadings.length
     if (readingsLength != 0) {
         for (let index3 = 0; index3 <= readingsLength - 1; index3++) {
-            if (connected == 1) {
-                serial.writeString(dateTimeReadings[index3])
-                basic.pause(50)
-                serial.writeLine("" + (weightReadings[index3]))
-                basic.pause(50)
-            }
+            serial.writeString(dateTimeReadings[index3])
+            basic.pause(50)
+            serial.writeLine("" + (weightReadings[index3]))
+            basic.pause(50)
         }
         serial.writeLine("Upload completed")
     } else {
@@ -150,16 +147,16 @@ function emptyTank () {
     doTare()
 }
 let diffWeight = 0
+let lastWeight = 0
 let charIn = ""
 let mm = ""
 let hh = ""
 let dt = ""
 let mo = ""
 let yr = ""
+let weight = 0
 let rawWeightx10 = 0
 let rawWeight = 0
-let weight = 0
-let lastWeight = 0
 let connected = 0
 let readingsLength = 0
 let params = ""
@@ -211,6 +208,7 @@ basic.forever(function () {
 })
 // Read the weight
 loops.everyInterval(readingPeriod, function () {
+    lastWeight = weight
     readWeight()
     // Brief heartbeat
     basic.showIcon(IconNames.Heart)
@@ -221,7 +219,6 @@ loops.everyInterval(readingPeriod, function () {
         storeWeight()
     }
     diffWeight = weight - lastWeight
-    serial.writeLine("diffWeight: " + diffWeight + "abs: " + Math.abs(diffWeight))
     // Only store significant weight change
     if (Math.abs(diffWeight) > deltaWeight) {
         storeWeight()
