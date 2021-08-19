@@ -149,6 +149,7 @@ function emptyTank () {
     basic.pause(10000)
     doTare()
 }
+let diffWeight = 0
 let charIn = ""
 let mm = ""
 let hh = ""
@@ -219,8 +220,10 @@ loops.everyInterval(readingPeriod, function () {
     if (DS3231.minute() == 0) {
         storeWeight()
     }
+    diffWeight = weight - lastWeight
+    serial.writeLine("diffWeight: " + diffWeight + "abs: " + Math.abs(diffWeight))
     // Only store significant weight change
-    if (Math.abs(weight - lastWeight) > deltaWeight) {
+    if (Math.abs(diffWeight) > deltaWeight) {
         storeWeight()
     }
     if (weight > weightLimit) {
