@@ -224,6 +224,7 @@ loops.everyInterval(readingPeriod, function () {
         storeWeight()
     }
     if (weight > weightLimit) {
+        lastWeight = weight
         // Read again to allow for glitches
         readWeight()
         // Empty only if 2 successive reads are over the weight limit
