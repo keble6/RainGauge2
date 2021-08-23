@@ -214,13 +214,19 @@ loops.everyInterval(readingPeriod, function () {
     basic.showIcon(IconNames.Heart)
     basic.pause(100)
     basic.clearScreen()
+    diffWeight = weight - lastWeight
+    // Only store significant weight change, and check persistence
+    if (Math.abs(diffWeight) > deltaWeight) {
+        lastWeight = weight
+        readWeight()
+        diffWeight = weight - lastWeight
+        // The change was not noise
+        if (Math.abs(diffWeight) < deltaWeight / 2) {
+            storeWeight()
+        }
+    }
     // Store weight on the hour
     if (DS3231.minute() == 0) {
-        storeWeight()
-    }
-    diffWeight = weight - lastWeight
-    // Only store significant weight change
-    if (Math.abs(diffWeight) > deltaWeight) {
         storeWeight()
     }
     if (weight > weightLimit) {
