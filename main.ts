@@ -66,22 +66,24 @@ input.onButtonPressed(Button.A, function () {
 function readWeight () {
     // Display continuously read weight, unless tare is operating
     if (tareActive == 0) {
+        lastWeight = weight
         HX711.power_up()
         basic.pause(powerupDelay)
         rawWeight = HX711.get_units(20)
         rawWeightx10 = rawWeight * 10
         weight = Math.round(rawWeightx10) / 10
+        diffWeight = weight - lastWeight
         serial.writeLine("" + dateTimeString() + weight + "g")
         HX711.power_down()
     }
 }
 function storeWeight () {
     dateTimeReadings.push(dateTimeString())
-    weightReadings.push("" + weight + "g")
+    weightReadings.push(convertToText(weight))
 }
 // Store an event (text) and also send it to serial (USB)
 function logEvent (text: string) {
-    serial.writeLine(text)
+    serial.writeLine("" + dateTimeString() + " " + text)
     dateTimeReadings.push(dateTimeString())
     weightReadings.push(text)
 }
@@ -95,6 +97,8 @@ function upload () {
         for (let index2 = 0; index2 <= readingsLength - 1; index2++) {
             if (connected == 1) {
                 bluetooth.uartWriteString(dateTimeReadings[index2])
+                basic.pause(100)
+                bluetooth.uartWriteString(", ")
                 basic.pause(100)
                 bluetooth.uartWriteLine(weightReadings[index2])
                 basic.pause(100)
@@ -130,6 +134,8 @@ function uploadUSB () {
         for (let index3 = 0; index3 <= readingsLength - 1; index3++) {
             serial.writeString(dateTimeReadings[index3])
             basic.pause(50)
+            serial.writeString(", ")
+            basic.pause(50)
             serial.writeLine("" + (weightReadings[index3]))
             basic.pause(50)
         }
@@ -146,17 +152,17 @@ function emptyTank () {
     basic.pause(10000)
     doTare()
 }
-let diffWeight = 0
-let lastWeight = 0
 let charIn = ""
 let mm = ""
 let hh = ""
 let dt = ""
 let mo = ""
 let yr = ""
-let weight = 0
+let diffWeight = 0
 let rawWeightx10 = 0
 let rawWeight = 0
+let weight = 0
+let lastWeight = 0
 let connected = 0
 let readingsLength = 0
 let params = ""
@@ -208,34 +214,23 @@ basic.forever(function () {
 })
 // Read the weight
 loops.everyInterval(readingPeriod, function () {
-    lastWeight = weight
-    readWeight()
     // Brief heartbeat
     basic.showIcon(IconNames.Heart)
     basic.pause(100)
     basic.clearScreen()
-    diffWeight = weight - lastWeight
+    readWeight()
     // Only store significant weight change, and check persistence
     if (Math.abs(diffWeight) > deltaWeight) {
-        lastWeight = weight
         readWeight()
-        diffWeight = weight - lastWeight
-        // The change was not noise
+        // The weight change was significant
+        // The weight change was not significant but the time is "00", so store anyway
         if (Math.abs(diffWeight) < deltaWeight / 2) {
             storeWeight()
-        }
-    }
-    // Store weight on the hour
-    if (DS3231.minute() == 0) {
-        storeWeight()
-    }
-    if (weight > weightLimit) {
-        lastWeight = weight
-        // Read again to allow for glitches
-        readWeight()
-        // Empty only if 2 successive reads are over the weight limit
-        if (weight > weightLimit) {
-            emptyTank()
+            if (weight > weightLimit) {
+                emptyTank()
+            }
+        } else if (DS3231.minute() == 0) {
+            storeWeight()
         }
     }
 })
