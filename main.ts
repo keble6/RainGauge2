@@ -224,14 +224,15 @@ loops.everyInterval(readingPeriod, function () {
         serial.writeLine("diff: " + diffWeight + " > delta")
         readWeight()
         // The weight change was significant
-        // The weight change was not significant but the time is "00", so store anyway
         if (Math.abs(diffWeight) < deltaWeight / 2) {
             serial.writeLine("diff: " + diffWeight + " < delta/2")
             storeWeight()
             if (weight > weightLimit) {
                 emptyTank()
             }
-        } else if (DS3231.minute() == 0) {
+        }
+        // The time is "00", so store anyway
+        if (DS3231.minute() == 0) {
             storeWeight()
         }
     }
