@@ -77,6 +77,9 @@ function readWeight () {
         HX711.power_down()
     }
 }
+function debug () {
+    serial.writeLine("weight: " + weight + " lastWeight: " + lastWeight + " diffWeight: " + diffWeight)
+}
 function storeWeight () {
     dateTimeReadings.push(dateTimeString())
     weightReadings.push(convertToText(weight))
@@ -187,7 +190,7 @@ weightReadings = []
 let weightLimit = 300
 numTare = 10
 tareActive = 0
-powerupDelay = 500
+powerupDelay = 10000
 basic.clearScreen()
 bluetooth.startUartService()
 pumpControl(0)
@@ -219,17 +222,19 @@ loops.everyInterval(readingPeriod, function () {
     basic.pause(100)
     basic.clearScreen()
     readWeight()
-    // Only store significant weight change, and check persistence
+    // Check for persistence
     if (Math.abs(diffWeight) > deltaWeight) {
+        debug()
         readWeight()
+        debug()
         // The weight change was significant
         if (Math.abs(diffWeight) < deltaWeight / 2) {
             storeWeight()
-            if (weight > weightLimit) {
-                emptyTank()
-            }
         }
     } else {
+        if (weight > weightLimit) {
+            emptyTank()
+        }
         // The time is "00", so store anyway
         if (DS3231.minute() == 0) {
             storeWeight()
