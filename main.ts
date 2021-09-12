@@ -54,6 +54,9 @@ bluetooth.onBluetoothConnected(function () {
     connected = 1
     basic.showIcon(IconNames.Square)
     upload()
+    // Allow commands from BT
+    command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
+    parseCommand()
 })
 bluetooth.onBluetoothDisconnected(function () {
     connected = 0
@@ -238,6 +241,10 @@ loops.everyInterval(readingPeriod, function () {
         // The time is "00", so store anyway
         if (DS3231.minute() == 0) {
             storeWeight()
+            // At midnight: pump out and tare
+            if (DS3231.hour() == 0) {
+                emptyTank()
+            }
         }
     }
 })
