@@ -54,9 +54,6 @@ bluetooth.onBluetoothConnected(function () {
     connected = 1
     basic.showIcon(IconNames.Square)
     upload()
-    // Allow commands from BT
-    command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
-    parseCommand()
 })
 bluetooth.onBluetoothDisconnected(function () {
     connected = 0
